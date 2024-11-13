@@ -89,7 +89,7 @@ from yugabyte.test_descriptor import TEST_DESCRIPTOR_SEPARATOR  # noqa
 TEST_TIMEOUT_UPPER_BOUND_SEC = 35 * 60
 
 # Default for maximum test failure threshold, after which the Spark job will be aborted
-DEFAULT_MAX_NUM_TEST_FAILURES = 1  # TODO: Temporary value while testing behavior of cancelled jobs
+DEFAULT_MAX_NUM_TEST_FAILURES = 12  # TODO: Temporary value while testing behavior of cancelled jobs
 
 # Default for test artifact size limit to copy back to the build host, in bytes.
 MAX_ARTIFACT_SIZE_BYTES = 100 * 1024 * 1024
@@ -904,7 +904,7 @@ def collect_cpp_tests(
 
     if cpp_test_program_filter_list:
         cpp_test_program_filter = set(cpp_test_program_filter_list)
-        unfiltered_test_programs = test_programs
+        unfiltered_test_programs = test_programsTODO
 
         # test_program contains test paths relative to the root directory (including directory
         # names), and cpp_test_program_filter contains basenames only.
@@ -1094,15 +1094,21 @@ def propagate_env_vars() -> None:
     logging.info("Number of propagated environment variables: %s", num_propagated)
 
 
-def run_spark_action(action: Any) -> Any:
+def run_spark_action(action: Any, test_name: String) -> Any:
     import py4j  # type: ignore
     try:
         results = action()
     except py4j.protocol.Py4JJavaError as e:
         if "cancelled as part of cancellation of all jobs" in str(e):
-            results = None
+            results = yb_dist_tests.TestResult(
+                exit_code=88,
+                test_descriptor=yb_dist_tests.TestDescriptor(test_name),
+                elapsed_time_sec=0,
+                failed_without_output=True)
+            logging.warning("!!!!!!!")
             logging.warning("Spark job was killed after hitting test failure threshold of %s",
                             g_max_num_test_failures)
+            logging.warning("!!!!!!!")
         else:
             logging.error("Spark job failed to run!.")
             raise
@@ -1360,7 +1366,7 @@ def main() -> None:
         try:
             counter_thread.start()
             results = run_spark_action(lambda: test_names_rdd.map(
-              lambda test_name: parallel_run_test(test_name, fail_count)
+              lambda test_name: (parallel_run_test(test_name, fail_count), test_name)
             ).collect())
 
         finally:
