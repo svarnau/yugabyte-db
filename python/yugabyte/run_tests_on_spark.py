@@ -89,7 +89,7 @@ from yugabyte.test_descriptor import TEST_DESCRIPTOR_SEPARATOR  # noqa
 TEST_TIMEOUT_UPPER_BOUND_SEC = 35 * 60
 
 # Default for maximum test failure threshold, after which the Spark job will be aborted
-DEFAULT_MAX_NUM_TEST_FAILURES = 200
+DEFAULT_MAX_NUM_TEST_FAILURES = 1 # TODO: Temporary value while testing behavior of cancelled jobs
 
 # Default for test artifact size limit to copy back to the build host, in bytes.
 MAX_ARTIFACT_SIZE_BYTES = 100 * 1024 * 1024
@@ -1100,11 +1100,12 @@ def run_spark_action(action: Any) -> Any:
         results = action()
     except py4j.protocol.Py4JJavaError as e:
         if "cancelled as part of cancellation of all jobs" in str(e):
+            results = None
             logging.warning("Spark job was killed after hitting test failure threshold of %s",
                             g_max_num_test_failures)
         else:
-            logging.error("Spark job failed to run! Jenkins should probably restart this build.")
-        raise
+            logging.error("Spark job failed to run!.")
+            raise
 
     return results
 
