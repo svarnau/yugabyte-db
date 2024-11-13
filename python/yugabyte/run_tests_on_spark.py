@@ -88,9 +88,8 @@ from yugabyte.test_descriptor import TEST_DESCRIPTOR_SEPARATOR  # noqa
 # that should be triggered earlier.
 TEST_TIMEOUT_UPPER_BOUND_SEC = 35 * 60
 
-# Defaults for maximum test failure threshold, after which the Spark job will be aborted
-DEFAULT_MAX_NUM_TEST_FAILURES_MACOS_DEBUG = 150
-DEFAULT_MAX_NUM_TEST_FAILURES = 100
+# Default for maximum test failure threshold, after which the Spark job will be aborted
+DEFAULT_MAX_NUM_TEST_FAILURES = 200
 
 # Default for test artifact size limit to copy back to the build host, in bytes.
 MAX_ARTIFACT_SIZE_BYTES = 100 * 1024 * 1024
@@ -1177,9 +1176,7 @@ def main() -> None:
     parser.add_argument('--max-num-test_failures', type=int, dest='max_num_test_failures',
                         default=None,
                         help='Maximum number of test failures before aborting the Spark test job.'
-                             'Default is {} for all the builds except {} for macOS debug.'.format(
-                              DEFAULT_MAX_NUM_TEST_FAILURES,
-                              DEFAULT_MAX_NUM_TEST_FAILURES_MACOS_DEBUG))
+                             'Default is {}.'.format(DEFAULT_MAX_NUM_TEST_FAILURES))
 
     args = parser.parse_args()
     global g_spark_master_url_override
@@ -1242,10 +1239,7 @@ def main() -> None:
 
     global g_max_num_test_failures
     if not (args.max_num_test_failures or os.environ.get('YB_MAX_NUM_TEST_FAILURES', None)):
-        if is_macos() and global_conf.build_type == 'debug':
-            g_max_num_test_failures = DEFAULT_MAX_NUM_TEST_FAILURES_MACOS_DEBUG
-        else:
-            g_max_num_test_failures = DEFAULT_MAX_NUM_TEST_FAILURES
+        g_max_num_test_failures = DEFAULT_MAX_NUM_TEST_FAILURES
     elif args.max_num_test_failures:
         g_max_num_test_failures = args.max_num_test_failures
     else:
