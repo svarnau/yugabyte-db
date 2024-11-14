@@ -1094,7 +1094,7 @@ def propagate_env_vars() -> None:
     logging.info("Number of propagated environment variables: %s", num_propagated)
 
 
-def run_spark_action(action: Any, test_name: String) -> Any:
+def run_spark_action(action: Any, test_name: str = '') -> Any:
     import py4j  # type: ignore
     try:
         results = action()
