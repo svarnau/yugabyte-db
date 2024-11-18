@@ -1104,7 +1104,7 @@ def run_spark_action(action: Any) -> Any:
     except py4j.protocol.Py4JJavaError as e:
         if "cancelled as part of cancellation of all jobs" in str(e):
             log_heading("Spark job was killed after hitting test failure threshold of %s",
-                            g_max_num_test_failures)
+                        g_max_num_test_failures)
         else:
             logging.error("Spark job failed to run!.")
     return results
@@ -1331,9 +1331,11 @@ def main() -> None:
     # That way we are not dependent on the entire test set to run successfully and can
     # capture partial results.
     from pyspark.accumulators import AccumulatorParam
+
     class ListAccumulatorParam(AccumulatorParam):
         def zero(self, value):
             return []
+
         def addInPlace(self, listvar, newvalue):
             listvar.append(newvalue)
             return listvar
