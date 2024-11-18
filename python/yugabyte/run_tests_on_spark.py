@@ -905,7 +905,7 @@ def collect_cpp_tests(
 
     if cpp_test_program_filter_list:
         cpp_test_program_filter = set(cpp_test_program_filter_list)
-        unfiltered_test_programs = test_programsTODO
+        unfiltered_test_programs = test_programs
 
         # test_program contains test paths relative to the root directory (including directory
         # names), and cpp_test_program_filter contains basenames only.
@@ -1382,7 +1382,7 @@ def main() -> None:
             counter_stop.set()
             counter_thread.join(timeout=THREAD_JOIN_TIMEOUT_SEC)
 
-        # Each task (or executor?) adds a list of results, so we need to flatten it.
+        # Each task (or executor?) adds a list of results, so we need to flatten to single list.
         results = []
         for rlist in test_results.value:
             results.extend(rlist)
