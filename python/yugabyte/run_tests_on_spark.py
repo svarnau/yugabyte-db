@@ -1103,8 +1103,8 @@ def run_spark_action(action: Any) -> Any:
         results = action()
     except py4j.protocol.Py4JJavaError as e:
         if "cancelled as part of cancellation of all jobs" in str(e):
-            log_heading("Spark job was killed after hitting test failure threshold of %s",
-                        g_max_num_test_failures)
+            log_heading("Spark job was killed after hitting test failure threshold of {}".format(
+                        g_max_num_test_failures))
         else:
             logging.error("Spark job failed to run!.")
     return results
@@ -1330,13 +1330,13 @@ def main() -> None:
     # Rather than collect results from RDD dataset, accumulate them in the spark_context.
     # That way we are not dependent on the entire test set to run successfully and can
     # capture partial results.
-    from pyspark.accumulators import AccumulatorParam
+    from pyspark.accumulators import AccumulatorParam  # type: ignore
 
-    class ListAccumulatorParam(AccumulatorParam):
-        def zero(self, value):
+    class ListAccumulatorParam(AccumulatorParam):  # type: ignore
+        def zero(self, value: Any) -> list:
             return []
 
-        def addInPlace(self, listvar, newvalue):
+        def addInPlace(self, listvar: list, newvalue: Any) -> list:
             listvar.append(newvalue)
             return listvar
 
