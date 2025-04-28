@@ -135,6 +135,8 @@ JENKINS_ENV_VARS = [
     "BUILD_TAG",
     "BUILD_URL",
     "CVS_BRANCH",
+    "CSI_API",
+    "CSI_TOKEN",
     "EXECUTOR_NUMBER",
     "GIT_BRANCH",
     "GIT_COMMIT",
