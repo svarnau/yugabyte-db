@@ -80,6 +80,7 @@ from typing import List, Dict, Set, Tuple, Optional, Any, cast
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from yugabyte import csi_report  # noqa
 from yugabyte import file_util  # noqa
 from yugabyte import build_paths  # noqa
 from yugabyte.test_descriptor import TEST_DESCRIPTOR_SEPARATOR  # noqa
@@ -452,6 +453,14 @@ def parallel_run_test(test_descriptor_str: str, fail_count: Any, test_results: A
     timer_thread = None
     try:
         start_time_sec = time.time()
+
+        csi_id = csi_report.create_test(test_descriptor.descriptor_str_without_attempt_index,
+                                        '', # TODO: figure out code ref from test descriptor (?)
+                                        test_descriptor.language,
+                                        os.getenv('YB_CSI_' + test_descriptor.language, ''),
+                                        test_descriptor.attempt_index,
+                                        start_time_sec)
+
         error_log_dir_path = os.path.dirname(os.path.abspath(error_output_path))
         file_util.mkdir_p(error_log_dir_path)
         runner_oneline = \
@@ -463,7 +472,6 @@ def parallel_run_test(test_descriptor_str: str, fail_count: Any, test_results: A
             )
         process = subprocess.Popen(
             [get_bash_path(), '-c', runner_oneline],
-            cwd=get_build_root()
         )
 
         # Terminate extremely long running tests using a timer thread.
@@ -479,6 +487,7 @@ def parallel_run_test(test_descriptor_str: str, fail_count: Any, test_results: A
         timer_thread.start()
         exit_code = process.wait()
         elapsed_time_sec = time.time() - start_time_sec
+        # TODO: CSI endtime in ms
 
         additional_log_message = ''
         if elapsed_time_sec > TEST_TIMEOUT_UPPER_BOUND_SEC:
@@ -490,6 +499,7 @@ def parallel_run_test(test_descriptor_str: str, fail_count: Any, test_results: A
             f"seconds, exit code: {exit_code}{additional_log_message}")
         if exit_code != 0:
             fail_count.add(1)
+        # TODO: CSI close item with pass/fail status
 
         artifact_copy_result: Optional[artifact_upload.FileTransferResult] = None
         spark_error_copy_result: Optional[artifact_upload.FileTransferResult] = None
@@ -525,6 +535,7 @@ def parallel_run_test(test_descriptor_str: str, fail_count: Any, test_results: A
             else:
                 logging.warning("Artifact list does not exist: '%s'", artifact_list_path)
 
+            # TODO: CSI upload artifact logs
             build_host = os.environ.get('YB_BUILD_HOST')
             assert build_host is not None
             artifact_copy_result = copy_to_host(artifact_paths, build_host)
@@ -545,6 +556,7 @@ def parallel_run_test(test_descriptor_str: str, fail_count: Any, test_results: A
             spark_error_copy_result=spark_error_copy_result))
         return None
     finally:
+        # TODO: CSI log timed-out test?
         delete_if_exists_log_errors(test_tmp_dir)
         delete_if_exists_log_errors(test_started_running_flag_file)
         delete_if_exists_log_errors(artifact_list_path)
@@ -1265,6 +1277,12 @@ def main() -> None:
     # Start the timer.
     global_start_time = time.time()
 
+    # For now, we are just dividing tests into two suites by language.
+    for suite in ['cpp', 'java']:
+        os.environ['YB_CSI_' + suite] = csi_report.create_suite(suite,
+            os.getenv('YB_CSI_SUITE',''), global_start_time)
+
+
     # This needs to be done before Spark context initialization, which will happen as we try to
     # collect all gtest tests in all C++ test programs.
     if args.send_archive_to_workers:
@@ -1379,6 +1397,11 @@ def main() -> None:
         assert total_num_tests == len(test_descriptors), \
             "total_num_tests={}, len(test_descriptors)={}".format(
                     total_num_tests, len(test_descriptors))
+        # TODO: decide if we need to log num tests planned in suite attribute
+        #num_planned = {'cpp': 0, 'java': 0}
+        #for td in test_descriptors:
+        #    if td.attempt_index == 1:
+        #        num_planned[td.language] += 1
 
         # Randomize test order to avoid any kind of skew.
         random.shuffle(test_descriptors)
@@ -1406,6 +1429,9 @@ def main() -> None:
     else:
         # Allow running zero tests, for testing the reporting logic.
         results = []
+
+    for suite in ['cpp', 'java']:
+        csi_report.close_item(os.getenv('YB_CSI_' + suite, None), None)
 
     test_exit_codes = set([result.exit_code for result in results])
 
